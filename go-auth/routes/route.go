@@ -8,6 +8,7 @@ import (
 
 func Setup(app *fiber.App) {
 
+	// Routes for auth controlers
 	app.Post("/register", controlers.Register)
 	app.Post("/login", controlers.Login)
 	app.Get("/user", controlers.User)

@@ -18,8 +18,10 @@ func Connect() {
 		panic(err)
 	}
 
+	// assign connection to global variable TO USE IT IN OTHER PACKAGES
 	DB = con
 
+	// migrate models to create tables in database
 	con.AutoMigrate(&models.User{})
 	fmt.Println("Database connected", con)
 

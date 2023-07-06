@@ -9,14 +9,18 @@ import (
 )
 
 func main() {
+	// Connect to database
 	database.Connect()
 
+	// Create new fiber app
 	app := fiber.New()
 
+	// CORS
 	app.Use(cors.New(cors.Config{
 		AllowCredentials: true,
 	}))
 
+	// Routes
 	routes.Setup(app)
 
 	app.Listen(":8000")
