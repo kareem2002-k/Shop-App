@@ -22,11 +22,17 @@ func Connect() {
 	DB = con
 
 	// migrate models to create tables in database
-	con.AutoMigrate(&models.User{}, &models.Product{}, &models.Cart{}, &models.CartItem{})
+	con.AutoMigrate(&models.User{}, &models.Product{}, &models.Cart{}, &models.CartItem{}, &models.Order{}, &models.OrderedItem{}, &models.Address{})
+	// create foreign key for user table
+	DB.Model(&models.User{}).Association("Address")
 
 	// create foreign key for cart table
 	DB.Model(&models.User{}).Association("Cart")
 	DB.Model(&models.Cart{}).Association("Items")
+
+	// create foreign key for order table
+	DB.Model(&models.User{}).Association("Orders")
+	DB.Model(&models.Order{}).Association("Items")
 
 	// print message if connection successful
 

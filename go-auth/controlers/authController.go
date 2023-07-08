@@ -33,6 +33,8 @@ func Register(c *fiber.Ctx) error {
 		Email:    data["email"],
 	}
 
+	database.DB.Create(&user)
+
 	// have a token for the user
 
 	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
@@ -49,8 +51,6 @@ func Register(c *fiber.Ctx) error {
 			"message": "Could not login",
 		})
 	}
-
-	database.DB.Create(&user)
 
 	// create cookie with jwt token
 	cookie := fiber.Cookie{

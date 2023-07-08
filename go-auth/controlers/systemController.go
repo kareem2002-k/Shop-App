@@ -93,33 +93,46 @@ func AddToCart(c *fiber.Ctx) error {
 	if cart.UserID == 0 {
 		cart = models.Cart{
 			UserID:       uint(uID),
-			Creationdate: time.Now().Format("2006-01-02"), // date of creation only for the first time
+			Creationdate: time.Now().Format("2006-01-02"),
+			// date of creation only for the first time
 		}
 		database.DB.Create(&cart)
 
-	}
-
-	// check if the product is already in the cart
-	var cartItem models.CartItem
-
-	database.DB.Where("cart_id = ? AND product_id = ?", cart.CartID, productID).First(&cartItem)
-
-	// if the product is already in the cart
-	if cartItem.CartID != 0 {
-		// update the cart item quntity
-		cartItem.Quantity = int(cartItem.Quantity) + int(productQuntity)
-
-		// update the product quntity
-
-		database.DB.Model(&cartItem).Where("cart_id = ? AND product_id = ?", cartItem.CartID, productID).Updates(&cartItem)
 	} else {
-		// add the product to the cart
-		cartItem = models.CartItem{
-			CartID:    cart.CartID,
-			ProductID: uint(productID),
-			Quantity:  int(productQuntity),
+
+		// check if the product is already in the cart
+		var cartItem models.CartItem
+		// get the cart item from the database
+		getItem := database.DB.Where("cart_id = ? AND product_id = ?", cart.CartID, productID).First(&cartItem)
+
+		// if the product is already in the cart
+		if getItem.Error != nil {
+
+			if getItem.Error.Error() == "record not found" {
+				// add the product to the cart
+				cartItem = models.CartItem{
+					CartID:    cart.CartID,
+					ProductID: uint(productID),
+					Quantity:  int(productQuntity),
+				}
+
+				fmt.Println(cartItem)
+				fmt.Println(cartItem.CartID)
+				fmt.Println("i am here")
+				database.DB.Create(&cartItem)
+			}
+			// update the cart item quntity
+
+		} else {
+
+			cartItem.Quantity = int(cartItem.Quantity) + int(productQuntity)
+
+			// update the product quntity
+
+			database.DB.Model(&cartItem).Where("cart_id = ? AND product_id = ?", cartItem.CartID, productID).Updates(&cartItem)
+
 		}
-		database.DB.Create(&cartItem)
+
 	}
 
 	return c.JSON(fiber.Map{
@@ -244,4 +257,86 @@ func GetProduct(c *fiber.Ctx) error {
 	database.DB.Where("product_id = ?", id).First(&product)
 
 	return c.JSON(product)
+}
+
+func CheckOut(c *fiber.Ctx) error {
+
+	cookie := c.Cookies("jwt")
+
+	token, autheror := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
+		return []byte(SecretKey), nil
+	})
+
+	if autheror != nil {
+		c.Status(fiber.StatusUnauthorized)
+		return c.JSON(fiber.Map{
+			"message": "Unauthenticated",
+		})
+	}
+
+	// get user id from token
+	claims := token.Claims.(*jwt.StandardClaims)
+
+	// get the cart from the database
+	var cart models.Cart
+
+	database.DB.Where("user_id = ?", claims.Issuer).Preload("Items").First(&cart)
+
+	// check if the cart is empty
+	if len(cart.Items) == 0 {
+		c.Status(fiber.StatusBadRequest)
+		return c.JSON(fiber.Map{
+			"message": "Cart is empty",
+		})
+	}
+
+	// Check if the user has valid address
+	var address models.Address
+
+	database.DB.Where("user_id = ?", claims.Issuer).First(&address)
+
+	if address.UserID == 0 {
+		c.Status(fiber.StatusBadRequest)
+		return c.JSON(fiber.Map{
+			"message": "Address not found",
+		})
+	}
+
+	UserID, _ := strconv.ParseInt(claims.Issuer, 10, 64)
+
+	// Initialize a new order
+	order := models.Order{
+		UserID:       uint(UserID),
+		Creationdate: time.Now().Format("2006-01-02 15:04:05"),
+		Status:       "Order Placed",
+	}
+
+	var TotalPrice float64 = 0
+
+	for _, cartItem := range cart.Items {
+		orderItem := models.OrderedItem{
+			ProductID: uint(cartItem.ProductID),
+			Quantity:  cartItem.Quantity,
+			Product:   cartItem.Product,
+			UserID:    uint(UserID),
+		}
+		order.Items = append(order.Items, orderItem)
+		TotalPrice = TotalPrice + (float64(cartItem.Quantity) * float64(cartItem.Product.Price))
+
+	}
+	order.Total = TotalPrice
+	order.Address = address.Country + ", " + address.City + ", " + address.Street + ", " + address.Building + ", " + address.Apartment
+
+	// save the order in the database
+	database.DB.Create(&order)
+
+	// Reset the cart and delete the cart items
+	var cartItems models.CartItem
+
+	database.DB.Where("cart_id = ?", cart.CartID).Delete(&cartItems)
+
+	return c.JSON(fiber.Map{
+		"message": "Order Placed",
+	})
+
 }

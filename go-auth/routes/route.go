@@ -18,4 +18,5 @@ func Setup(app *fiber.App) {
 	app.Post("/deletecart", controlers.RemoveFromCart)
 	app.Get("/products", controlers.GetProducts)
 	app.Get("/product/:id", controlers.GetProduct)
+	app.Post("/order", controlers.CheckOut)
 }

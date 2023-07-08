@@ -1,2 +1,81 @@
 may when sending the id pf the product to any of add to cart or
 remover of cart parsing data erors happen
+
+
+
+func CheckOut(c *fiber.Ctx) error {
+
+	cookie := c.Cookies("jwt")
+
+	token, autheror := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
+		return []byte(SecretKey), nil
+	})
+
+	if autheror != nil {
+		c.Status(fiber.StatusUnauthorized)
+		return c.JSON(fiber.Map{
+			"message": "Unauthenticated",
+		})
+	}
+
+	// get user id from token
+	claims := token.Claims.(*jwt.StandardClaims)
+
+	// get the cart from the database
+	var cart models.Cart
+
+	database.DB.Where("user_id = ?", claims.Issuer).Preload("Items").First(&cart)
+
+	// check if the cart is empty
+	if len(cart.Items) == 0 {
+		c.Status(fiber.StatusBadRequest)
+		return c.JSON(fiber.Map{
+			"message": "Cart is empty",
+		})
+	}
+
+	// Check if the user has valid address
+	var address models.Address
+
+	database.DB.Where("user_id = ?", claims.Issuer).First(&address)
+
+	if address.UserID == 0 {
+		c.Status(fiber.StatusBadRequest)
+		return c.JSON(fiber.Map{
+			"message": "Address not found",
+		})
+	}
+
+	UserID, _ := strconv.ParseInt(claims.Issuer, 10, 64)
+
+	// Initialize a new order
+	order := models.Order{
+		UserID:       uint(UserID),
+		Creationdate: time.Now().Format("2006-01-02 15:04:05"),
+		Address:      address,
+		Status:       "Order Placed",
+	}
+
+	for _, cartItem := range cart.Items {
+		orderItem := models.OrderedItem{
+			ProductID: uint(cartItem.ProductID),
+			Quantity:  cartItem.Quantity,
+			Product:   cartItem.Product,
+			UserID:    uint(UserID),
+		}
+		order.Items = append(order.Items, orderItem)
+	}
+
+	// save the order in the database
+	database.DB.Create(&order)
+
+	// Reset the cart and delete the cart items
+	var cartItems models.CartItem
+
+	database.DB.Where("cart_id = ?", cart.CartID).Delete(&cartItems)
+
+	return c.JSON(fiber.Map{
+		"message": "Order Placed",
+	})
+
+}
