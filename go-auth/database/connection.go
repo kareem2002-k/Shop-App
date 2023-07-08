@@ -32,15 +32,4 @@ func Connect() {
 
 	fmt.Println("Database connected")
 
-	// add dummy product  to database
-	product := models.Product{
-		Name:        "product 1",
-		Price:       100,
-		Quntity:     10,
-		Description: "this is product 1",
-		Image:       "https://picsum.photos/200/300",
-		Categories:  "category 1",
-	}
-	DB.Create(&product)
-
 }

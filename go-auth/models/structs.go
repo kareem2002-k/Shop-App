@@ -5,13 +5,14 @@ type User struct {
 	Username string `json:"username"`
 	Password []byte `json:"-"` // hide password from json response
 	Email    string `json:"email" gorm:"unique"`
-	cart     []Cart // ONE user has many carts
+	cart     Cart   // ONE user has one carts
+
 }
 
 type Product struct {
 	ProductID   uint   `json:"product_id" gorm:"primary_key"`
 	Name        string `json:"name"`
-	Price       uint   `json:"price"`
+	Price       int    `json:"price"`
 	Quntity     int    `json:"quntity"`
 	Description string `json:"description"`
 	Image       string `json:"image"`
