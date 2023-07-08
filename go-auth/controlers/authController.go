@@ -33,9 +33,38 @@ func Register(c *fiber.Ctx) error {
 		Email:    data["email"],
 	}
 
+	// have a token for the user
+
+	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
+		Issuer:    strconv.Itoa(int(user.ID)),            // convert int to string (int is not allowed)
+		ExpiresAt: time.Now().Add(time.Hour * 24).Unix(), // 1 day
+	})
+
+	// generate jwt token with secret key
+	token, err := claims.SignedString([]byte(SecretKey))
+
+	if err != nil {
+		c.Status(fiber.StatusBadRequest)
+		return c.JSON(fiber.Map{
+			"message": "Could not login",
+		})
+	}
+
 	database.DB.Create(&user)
 
-	return c.JSON(user)
+	// create cookie with jwt token
+	cookie := fiber.Cookie{
+		Name:     "jwt",
+		Value:    token,
+		Expires:  time.Now().Add(time.Hour * 24), // 1 day
+		HTTPOnly: true,
+	}
+
+	c.Cookie(&cookie)
+
+	return c.JSON(fiber.Map{
+		"message": "Success",
+	})
 
 }
 
@@ -115,6 +144,8 @@ func User(c *fiber.Ctx) error {
 	cookie := c.Cookies("jwt")
 
 	// parse jwt token with secret key and get claims
+	// to check if the token is valid or not
+	// to see if the token we have is the same token that we have in the cookie
 	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
 		return []byte(SecretKey), nil
 	})

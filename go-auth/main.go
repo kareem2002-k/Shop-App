@@ -27,5 +27,7 @@ func main() {
 	// Routes
 	routes.Setup(app)
 
+	// Add some items to the database
+
 	app.Listen(":8000")
 }

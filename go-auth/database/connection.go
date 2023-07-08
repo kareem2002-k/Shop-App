@@ -22,7 +22,25 @@ func Connect() {
 	DB = con
 
 	// migrate models to create tables in database
-	con.AutoMigrate(&models.User{})
-	fmt.Println("Database connected", con)
+	con.AutoMigrate(&models.User{}, &models.Product{}, &models.Cart{}, &models.CartItem{})
+
+	// create foreign key for cart table
+	DB.Model(&models.User{}).Association("Cart")
+	DB.Model(&models.Cart{}).Association("Items")
+
+	// print message if connection successful
+
+	fmt.Println("Database connected")
+
+	// add dummy product  to database
+	product := models.Product{
+		Name:        "product 1",
+		Price:       100,
+		Quntity:     10,
+		Description: "this is product 1",
+		Image:       "https://picsum.photos/200/300",
+		Categories:  "category 1",
+	}
+	DB.Create(&product)
 
 }

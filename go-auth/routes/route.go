@@ -13,4 +13,5 @@ func Setup(app *fiber.App) {
 	app.Post("/login", controlers.Login)
 	app.Get("/user", controlers.User)
 	app.Post("/logout", controlers.Logout)
+	app.Post("/addtocart", controlers.AddToCart)
 }
